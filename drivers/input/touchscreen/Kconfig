@@ -1316,7 +1316,6 @@ source "drivers/input/touchscreen/st/Kconfig"
 source "drivers/input/touchscreen/focaltech_touch/Kconfig"
 
 source "drivers/input/touchscreen/synaptics_tcm/Kconfig"
-source "drivers/input/touchscreen/fts_spi/Kconfig"
 
 config TOUCHSCREEN_SYNAPTICS_DSX
 	bool "Synaptics DSX Touchscreen Driver"
@@ -1333,5 +1332,8 @@ config TOUCHSCREEN_SYNAPTICS_DSX
 source "drivers/input/touchscreen/synaptics_dsx/Kconfig"
 
 source "drivers/input/touchscreen/nt36xxx/Kconfig"
+
+source "drivers/input/touchscreen/fts_spi/Kconfig"
+source "drivers/input/touchscreen/xiaomi/Kconfig"
 
 endif
