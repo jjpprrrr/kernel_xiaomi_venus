@@ -3180,6 +3180,19 @@ static ssize_t wls_die_temp_show(struct class *c,
 }
 static CLASS_ATTR_RO(wls_die_temp);
 
+static ssize_t wls_car_adapter_show(struct class *c,
+			struct class_attribute *attr, char *buf)
+{
+	struct battery_chg_dev *bcdev = container_of(c, struct battery_chg_dev,
+				battery_class);
+	struct psy_state *pst = &bcdev->psy_list[PSY_TYPE_XM];
+	int rc;
+	rc = read_property_id(bcdev, pst, XM_PROP_WLS_CAR_ADAPTER);
+	if (rc < 0)
+	      return rc;
+	return scnprintf(buf, PAGE_SIZE, "%u", pst->prop[XM_PROP_WLS_CAR_ADAPTER]);
+}
+static CLASS_ATTR_RO(wls_car_adapter);
 
 static ssize_t input_suspend_store(struct class *c,
 					struct class_attribute *attr,
@@ -3783,6 +3796,7 @@ static struct attribute *battery_class_attrs[] = {
 	&class_attr_tx_adapter.attr,
 	&class_attr_op_mode.attr,
 	&class_attr_wls_die_temp.attr,
+	&class_attr_wls_car_adapter.attr,
 	/*****************************/
 	&class_attr_input_suspend.attr,
 	&class_attr_verify_process.attr,
