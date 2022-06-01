@@ -612,6 +612,12 @@ static int _cnss_pci_get_reg_dump(struct cnss_pci_data *pci_priv,
 {
 	return msm_pcie_reg_dump(pci_priv->pci_dev, buf, len);
 }
+
+int cnss_pci_dsp_link_control(struct cnss_pci_data *pci_priv,
+			      bool link_enable)
+{
+	return msm_pcie_dsp_link_control(pci_priv->pci_dev, link_enable);
+}
 #else
 static int _cnss_pci_enumerate(struct cnss_plat_data *plat_priv, u32 rc_num)
 {
@@ -1918,7 +1924,7 @@ int cnss_pci_start_mhi(struct cnss_pci_data *pci_priv)
 		  jiffies + msecs_to_jiffies(BOOT_DEBUG_TIMEOUT_MS));
 
 	ret = cnss_pci_set_mhi_state(pci_priv, CNSS_MHI_POWER_ON);
-	del_timer(&pci_priv->boot_debug_timer);
+	del_timer_sync(&pci_priv->boot_debug_timer);
 	if (ret == 0)
 		cnss_wlan_adsp_pc_enable(pci_priv, false);
 
