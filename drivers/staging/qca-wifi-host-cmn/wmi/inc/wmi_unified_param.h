@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1298,6 +1299,12 @@ struct seg_hdr_info {
  *	        Data:1 Mgmt:0
  * @cfr_enable: flag to enable CFR capture
  *              0:disable 1:enable
+ * @en_beamforming: flag to enable tx beamforming
+ *              0:disable 1:enable
+ * @retry_limit_ext: 3 bits of extended retry limit.
+ *              Combined with 4 bits "retry_limit"
+ *              to create 7 bits hw retry count.
+ *              Maximum 127 retries for specific frames.
  */
 struct tx_send_params {
 	uint32_t pwr:8,
@@ -1309,7 +1316,9 @@ struct tx_send_params {
 		 preamble_type:5,
 		 frame_type:1,
 		 cfr_enable:1,
-		 reserved:10;
+		 en_beamforming:1,
+		 retry_limit_ext:3,
+		 reserved:6;
 };
 
 /**
@@ -5263,6 +5272,7 @@ typedef enum {
 #ifdef THERMAL_STATS_SUPPORT
 	wmi_service_thermal_stats_temp_range_supported,
 #endif
+	wmi_service_pno_scan_conf_per_ch_support,
 	wmi_services_max,
 } wmi_conv_service_ids;
 #define WMI_SERVICE_UNAVAILABLE 0xFFFF
@@ -8115,6 +8125,12 @@ typedef struct {
 	uint32_t counter;
 	uint32_t chain_rssi[WMI_HOST_MAX_CHAINS];
 	uint16_t chain_phase[WMI_HOST_MAX_CHAINS];
+	int32_t cfo_measurement;
+	uint8_t agc_gain[WMI_HOST_MAX_CHAINS];
+	uint32_t rx_start_ts;
+	uint32_t rx_ts_reset;
+	uint32_t mcs_rate;
+	uint32_t gi_type;
 } wmi_cfr_peer_tx_event_param;
 
 /**

@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2021-2022 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1944,6 +1945,16 @@ static void util_parse_noninheritance_list(uint8_t *extn_elem,
 	}
 }
 
+static size_t util_oui_header_len(uint8_t *ie)
+{
+	/* Cisco Vendor Specific IEs doesn't have subtype in
+	 * their VSIE header, therefore skip subtype
+	 */
+	if (ie[0] == 0x00 && ie[1] == 0x40 && ie[2] == 0x96)
+		return OUI_LEN - 1;
+	return OUI_LEN;
+}
+
 static uint32_t util_gen_new_ie(uint8_t *ie, uint32_t ielen,
 				uint8_t *subelement,
 				size_t subie_len, uint8_t *new_ie)
@@ -2033,16 +2044,18 @@ static uint32_t util_gen_new_ie(uint8_t *ie, uint32_t ielen,
 		} else {
 			/* ie in transmitting ie also in subelement,
 			 * copy from subelement and flag the ie in subelement
-			 * as copied (by setting eid field to 0xff). For
-			 * vendor ie, compare OUI + type + subType to
-			 * determine if they are the same ie.
+			 * as copied (by setting eid field to 0xff).
+			 * To determine if the vendor ies are same:
+			 * 1. For Cisco OUI, compare only OUI + type
+			 * 2. For other OUI, compare OUI + type + subType
 			 */
 			tmp_rem_len = subie_len - (tmp - sub_copy);
 			if (tmp_old[0] == WLAN_ELEMID_VENDOR &&
 			    tmp_rem_len >= MIN_VENDOR_TAG_LEN) {
 				if (!qdf_mem_cmp(tmp_old + PAYLOAD_START_POS,
 						 tmp + PAYLOAD_START_POS,
-						 OUI_LEN)) {
+						 util_oui_header_len(tmp +
+								     PAYLOAD_START_POS))) {
 					/* same vendor ie, copy from
 					 * subelement
 					 */
@@ -2584,9 +2597,9 @@ util_scan_parse_beacon_frame(struct wlan_objmgr_pdev *pdev,
 {
 	struct wlan_bcn_frame *bcn;
 	struct wlan_frame_hdr *hdr;
-	uint8_t *mbssid_ie = NULL;
+	uint8_t *mbssid_ie = NULL, *extcap_ie;
 	uint32_t ie_len = 0;
-	QDF_STATUS status;
+	QDF_STATUS status = QDF_STATUS_E_FAILURE;
 	struct scan_mbssid_info mbssid_info = { 0 };
 
 	hdr = (struct wlan_frame_hdr *)frame;
@@ -2596,12 +2609,24 @@ util_scan_parse_beacon_frame(struct wlan_objmgr_pdev *pdev,
 		sizeof(struct wlan_frame_hdr) -
 		offsetof(struct wlan_bcn_frame, ie));
 
-	mbssid_ie = util_scan_find_ie(WLAN_ELEMID_MULTIPLE_BSSID,
+	extcap_ie = util_scan_find_ie(WLAN_ELEMID_XCAPS,
 				      (uint8_t *)&bcn->ie, ie_len);
-	if (mbssid_ie) {
-		qdf_mem_copy(&mbssid_info.trans_bssid,
-			     hdr->i_addr3, QDF_MAC_ADDR_SIZE);
-		mbssid_info.profile_count = 1 << mbssid_ie[2];
+	/* Process MBSSID when Multiple BSSID (Bit 22) is set in Ext Caps */
+	if (extcap_ie &&
+	    extcap_ie[1] >= 3 && extcap_ie[1] <= WLAN_EXTCAP_IE_MAX_LEN &&
+	    (extcap_ie[4] & 0x40)) {
+		mbssid_ie = util_scan_find_ie(WLAN_ELEMID_MULTIPLE_BSSID,
+					      (uint8_t *)&bcn->ie, ie_len);
+		if (mbssid_ie) {
+			if (mbssid_ie[1] <= 0) {
+				scm_debug("MBSSID IE length is wrong %d",
+					  mbssid_ie[1]);
+				return status;
+			}
+			qdf_mem_copy(&mbssid_info.trans_bssid,
+				     hdr->i_addr3, QDF_MAC_ADDR_SIZE);
+			mbssid_info.profile_count = 1 << mbssid_ie[2];
+		}
 	}
 
 	status = util_scan_gen_scan_entry(pdev, frame, frame_len,
