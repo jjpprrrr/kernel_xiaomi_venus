@@ -149,7 +149,6 @@ void release_all_touches(struct fts_ts_info *info)
 	unsigned int type = MT_TOOL_FINGER;
 	int i;
 
-	dsi_display_primary_request_fod_hbm(0);
 	for (i = 0; i < TOUCH_ID_MAX; i++) {
 #ifdef STYLUS_MODE
 		if (test_bit(i, &info->stylus_id))
@@ -165,6 +164,7 @@ void release_all_touches(struct fts_ts_info *info)
 	input_sync(info->input_dev);
 	input_report_key(info->input_dev, BTN_INFO, 0);
 	input_sync(info->input_dev);
+	dsi_display_primary_request_fod_hbm(0);
 	info->touch_id = 0;
 	info->touch_skip = 0;
 	info->fod_id = 0;
@@ -3546,7 +3546,6 @@ static void fts_enter_pointer_event_handler(struct fts_ts_info *info,
 		if (fts_is_in_fodarea(x, y) && !(info->fod_id & ~(1 << touchId))) {
 			__set_bit(touchId, &info->sleep_finger);
 			if (fts_fingerprint_is_enable()) {
-				dsi_display_primary_request_fod_hbm(1);
 				info->fod_x = x;
 				info->fod_y = y;
 				info->fod_coordinate_update = true;
@@ -3554,13 +3553,14 @@ static void fts_enter_pointer_event_handler(struct fts_ts_info *info,
 				input_report_abs(info->input_dev, ABS_MT_WIDTH_MINOR, info->fod_overlap);
 				input_report_key(info->input_dev, BTN_INFO, 1);
 				input_sync(info->input_dev);
+				dsi_display_primary_request_fod_hbm(1);
 				logError(1,	"%s  %s :  FOD Press :%d, fod_id:%08x\n", tag, __func__, touchId, info->fod_id);
 			}
 		} else if (__test_and_clear_bit(touchId, &info->fod_id)) {
-			dsi_display_primary_request_fod_hbm(0);
 			input_report_abs(info->input_dev, ABS_MT_WIDTH_MINOR, 0);
 			input_report_key(info->input_dev, BTN_INFO, 0);
 			input_sync(info->input_dev);
+			dsi_display_primary_request_fod_hbm(0);
 			info->fod_x = 0;
 			info->fod_y = 0;
 			info->fod_coordinate_update = false;
@@ -3660,17 +3660,16 @@ static void fts_leave_pointer_event_handler(struct fts_ts_info *info,
 	}
 	__clear_bit(touchId, &info->sleep_finger);
 	if (__test_and_clear_bit(touchId, &info->fod_id)) {
-		dsi_display_primary_request_fod_hbm(0);
 		input_report_abs(info->input_dev, ABS_MT_WIDTH_MINOR, 0);
 		input_report_key(info->input_dev, BTN_INFO, 0);
 		input_sync(info->input_dev);
+		dsi_display_primary_request_fod_hbm(0);
 		info->fod_coordinate_update = false;
 		info->fod_x = 0;
 		info->fod_y = 0;
 	}
 	input_mt_report_slot_state(info->input_dev, tool, 0);
 	if (info->touch_id == 0) {
-		dsi_display_primary_request_fod_hbm(0);
 		input_report_key(info->input_dev, BTN_TOUCH, touch_condition);
 		if (!touch_condition)
 			input_report_key(info->input_dev, BTN_TOOL_FINGER, 0);
@@ -3681,6 +3680,7 @@ static void fts_leave_pointer_event_handler(struct fts_ts_info *info,
 		sysfs_notify(&info->fts_touch_dev->kobj, NULL, dev_attr_fod_state.attr.name);
 		input_report_key(info->input_dev, BTN_INFO, 0);
 		input_sync(info->input_dev);
+		dsi_display_primary_request_fod_hbm(0);
 
 #ifdef FTS_XIAOMI_TOUCHFEATURE
 		wake_up(&info->wait_queue);
@@ -4059,12 +4059,12 @@ static void fts_gesture_event_handler(struct fts_ts_info *info,
 
 				if ((info->sensor_sleep && !info->sleep_finger) || !info->sensor_sleep) {
 					info->fod_pressed = true;
-					dsi_display_primary_request_fod_hbm(1);
 					info->fod_x = x;
 					info->fod_y = y;
 					sysfs_notify(&info->fts_touch_dev->kobj, NULL, dev_attr_fod_state.attr.name);
 					input_report_key(info->input_dev, BTN_INFO, 1);
 					input_sync(info->input_dev);
+					dsi_display_primary_request_fod_hbm(1);
 					if (info->fod_id) {
 						fod_id = ffs(info->fod_id) - 1;
 						if (info->fod_id & ~(1 << fod_id))
